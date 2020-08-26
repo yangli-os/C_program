@@ -205,16 +205,3 @@ float discrete_area(float* x, int left, int len_x)
     }
     return area;
 }
-
-float discrete_area(int* x, int left, int len_x)
-{
-	//求离散曲线的面积
-	//离散数据，左界限，右界限
-	//return 一个面积值
-	float area = 0.0;
-	for (int i = left; i < len_x - 1; i++)
-	{
-		area += (x[i] + x[i + 1]) / 2;
-	}
-	return area;
-}
