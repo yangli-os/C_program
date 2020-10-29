@@ -1,5 +1,6 @@
 #include<iostream>
 #include<queue>
+//需要借助queue脚本，但是这个脚本并没有搜到
 //使用栈实现快速排序
 using namespace std;
  
