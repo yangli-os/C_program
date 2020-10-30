@@ -10,8 +10,9 @@ int Partation(int* arr, int low, int high);
 int Partation_Float(float* arr, int low, int high);
 void QuickSort(int* arr, int len);
 void QuickSortFloat(float* arr, int len);
-//一次划分过程
 
+/****************************************************int型快排*******************************************************/
+//快排的栈原理
 int Partation(int* arr, int low, int high)//返回值为low与high相等时的下标
 {
     int tmp = arr[low];//将第一个数字作为基准
@@ -45,42 +46,6 @@ int Partation(int* arr, int low, int high)//返回值为low与high相等时的�
     }
     arr[low] = tmp;//基准放入
     return low;//返回基准下标
-}
-
-int Partation_Float (float* arr, int low, int high)//返回值为low与high相等时的下标
-{
-    float tmp = arr[low];//将第一个数字作为基准
-    while (low < high)
-    {
-        while ((low < high) && (arr[high] >= tmp))//从后往前找比基准小的数字往前移
-        {
-            high--;//没有找到比基准小的数字
-        }
-        if (low == high)
-        {
-            break;//直到low与high相等跳出
-        }
-        else
-        {
-            arr[low] = arr[high];//将后面小的数字移到前面
-        }
-
-        while ((low < high) && (arr[low] <= tmp))//从前往后找比基准大的数字
-        {
-            low++;//没有找到比基准大的数字
-        }
-        if (arr[low] > tmp)
-        {
-            arr[high] = arr[low];//将前面的数字往后移
-        }
-        else
-        {
-            break;
-        }
-    }
-    arr[low] = tmp;//基准放入
-    return low;//返回基准下标
-
 }
 
 //用栈和队列组数对实现快速排序
@@ -133,6 +98,42 @@ void QuickSort(int* arr, int len)//最坏情况下时间复杂度为O(n^2)
         }
     }
     free(stack);
+}
+
+/*********************************************分割线****float类型数据**************************************************/
+int Partation_Float (float* arr, int low, int high)//返回值为low与high相等时的下标
+{
+    float tmp = arr[low];//将第一个数字作为基准
+    while (low < high)
+    {
+        while ((low < high) && (arr[high] >= tmp))//从后往前找比基准小的数字往前移
+        {
+            high--;//没有找到比基准小的数字
+        }
+        if (low == high)
+        {
+            break;//直到low与high相等跳出
+        }
+        else
+        {
+            arr[low] = arr[high];//将后面小的数字移到前面
+        }
+
+        while ((low < high) && (arr[low] <= tmp))//从前往后找比基准大的数字
+        {
+            low++;//没有找到比基准大的数字
+        }
+        if (arr[low] > tmp)
+        {
+            arr[high] = arr[low];//将前面的数字往后移
+        }
+        else
+        {
+            break;
+        }
+    }
+    arr[low] = tmp;   //基准放入
+    return low;       //返回基准下标
 }
 
 void QuickSortFloat(float* arr, int len)//最坏情况下时间复杂度为O(n^2)
