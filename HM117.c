@@ -2,7 +2,7 @@
 //
 
 #include "HM117_algorithm.h"
-#include <string>
+#include "string.h"
 //负责人：夏顺   时间： 2019.12.31  微信：15369748330  代码开发环境是win7 , vs2019
 //本程序总体来看共分为两个模块，第一个模块是停止打压算法的模块，第二个是停止打压后计算血压具体数值的模块。以tingzhidaya为标志位
 //算法的思想流程图见文档，下面主要对程序进行注释和说明。
@@ -59,7 +59,8 @@ uint16_t f_hr = 0;               //心率
 //函数的输出包括：HR,SBP, ABP,DBP, XLBQ_FLAG, BP_CONFIDENCE, STOP_FLAG,LOOSE_CUFF八个参数，其含义分别是心率，高压，平均压，低压，心率不齐标志位，置信度，停止打压标志位，袖带过松标志位。
 void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t p_num_bp, uint16_t checkstop_num,  uint16_t* HR, uint16_t* SBP, uint16_t* ABP, uint16_t* DBP, uint8_t* XLBQ_FLAG, uint16_t* BP_CONFIDENCE, uint16_t* STOP_FLAG , uint16_t * LOOSE_CUFF)
 {
-	
+        char pr_1 = '1';
+	printf("%s",pr_1);
 	*HR = 0;
 	*SBP = 0;
 	*DBP = 0;
@@ -265,8 +266,10 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 				}
 			}
 
-			if ((abs_int(Up_arr[i][2] - next_down_y) > mjudge_peak_height && abs_int(Up_arr[i][2] - next_down_y) < 1500 && abs_int(Up_arr[i][2] - before_down_y) > mjudge_peak_height && abs_int(Up_arr[i][2] - before_down_y) < 1500) && (abs_int(Up_arr[i][1] - before_down_x) > 10 && (next_down_x - Up_arr[i][1]) > 10))
+			if ((abs_int(Up_arr[i][2] - next_down_y) > mjudge_peak_height && abs_int(Up_arr[i][2] - next_down_y) < 4000 && abs_int(Up_arr[i][2] - before_down_y) > mjudge_peak_height && abs_int(Up_arr[i][2] - before_down_y) < 4000) && (abs_int(Up_arr[i][1] - before_down_x) > 10 && (next_down_x - Up_arr[i][1]) > 10))
 			{
+				//2.14日修改，把这里1500的阈值进行扩大到4000，其实这里可以没有必要进行最大阈值的限制，不影响以前完整的算法。
+
 
 				/*p_valley[uu][0] = before_down_x;*/
 				p_valley[uu][0] = before_down_y;   //记录左边波谷的高度
@@ -287,7 +290,7 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 				//p_valley[uu][2] = next_down_x;
 				//p_valley[uu][3] = next_down_y;
 				//uu++;
-				BP_CONFIDENCE_PRE = BP_CONFIDENCE_PRE + 8;  //若脉搏波高度过大，则需要降低一定置信度
+				BP_CONFIDENCE_PRE = BP_CONFIDENCE_PRE + 0;  //若脉搏波高度过大，则需要降低一定置信度    //2.14日修改，将其改成0，以前是BP_CONFIDENCE_PRE + 8，将BP_CONFIDENCE_PRE + 8放在了下文新的地方。
 			}
 			//}
 			//else if ((abs_int(Up_arr[i][1] - before_down_x) > 10 && abs_int(Up_arr[i][1] - next_down_x) > 10))
@@ -406,6 +409,30 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 			}
 
 		}
+		//2020.2.14更改内容
+		//更改原因：对于一些老人的数据，其脉搏波高度非常大，但却是正常波形。所以此处判断置信度时不能只用简单的高度
+		//以下为2020.2.14新增，目的是将这些老人比较大的脉搏波也识别为正常波形，尽量使改动不影响以前的算法
+		//所以这种情况我们应该将其视为特殊情况，筛选出来，特殊对待。我们设置置信度的概念是为了防止干扰，老人的波形和干扰的区别是，干扰时突然出现的，老人的波形却是逐渐上升的。
+		////特殊情况筛选：
+		for (i = 0; i < uu; i++)
+		{
+			if (p_peak[i][2] == 0) //针对置信度为0的波形
+			{
+				if (i > 4)
+				{
+					//判断其连续性
+					if(abs_int(p_peak[i][0] - p_peak[i-1][0]) < abs_int(( p_peak[i - 1][0]- p_peak[i - 2][0] + p_peak[i - 2][0] - p_peak[i - 3][0]+ p_peak[i - 3][0] - p_peak[i - 4][0])/3  ) +50)
+					{
+						p_peak[i][2] =1;  //若是连续上升或者下降在一定范围，而不是突然出现的，则认为是没有问题，重新置1.
+					}
+					else
+					{
+						BP_CONFIDENCE_PRE = BP_CONFIDENCE_PRE + 8;     //这个else才是真正的干扰，将BP_CONFIDENCE_PRE放在这里
+					}
+				}
+			}
+		}
+		//以上为2.14日代码修改，应该适用于老年人数据，同时也不影响年轻人的数据。
 
 
 
@@ -475,8 +502,8 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 
 			for (i = 0; i < uu - 1 - (epoch_num - 1) - 1; i++)     //该for循环针对checkstop的第1 2 3 4 列进行赋值。是进行各种算法的前提
 			{
-				if (p_peak[i + 1][1] - p_peak[i][1] > 0 && p_peak[i + 1][1] - p_peak[i][1] < p_diff)
-				{
+				if (p_peak[i + 1][1] - p_peak[i][1] > 0 && p_peak[i + 1][1] - p_peak[i][1] < p_diff)   //2020.2.14日备注，这里的p_diff是设置的默认200，2.14没有修改，因为通过观察，老人数据幅度虽然很大，但是是没有问题的，每个脉搏波的增长高度是在200以内的
+				{																						//所以这里是没有修改的，但这里仍然需要关注。若后续有些正常的数据，但是增长的幅度很高，超过200，则此处需要合理适当改动。
 					checkstop[Xstop][1]++;   //第二列是上升的个数列
 
 					if (p_peak[i + 1][1] > ITX && p_peak[i + 1][2] == 1)
@@ -650,7 +677,8 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 						if (p_peak[fff][1] <= 200) //波峰的高度低于200，视为较低的波峰阈值，该值是经验和实验所得，不建议改变。
 						{
 							low_peak++;
-							if (low_peak >= 2)
+                                                        //2021-1-11更新，原low_peak>=2，为适应255/195打压。
+							if (low_peak > 3)
 							{
 								stop_flag = 1;
 								tingzhi_ganrao = tingzhi_ganrao + 10;  //由于错过最大值点或者最大值点干扰，需要减少部分置信度
@@ -677,7 +705,7 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 				{
 					if ((peak_now <= peak_need ) && (uu - 2 - epoch_num-1)>p_max_id)   //如果当前波峰值小于需停波峰值，则停止
 					{
-                        stop_flag = 1;					
+                                            stop_flag = 1;					
 					}
 					if (peak_now <= 200)   ////如果当前波峰值较小，则停止
 					{
@@ -932,7 +960,7 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 			*HR = 0;
 			*SBP = 0;
 			*BP_CONFIDENCE = 10;
-			*DBP = 0;
+			* DBP = 0;
 			*ABP = 0;
 
 			*XLBQ_FLAG = 0;
@@ -1189,8 +1217,10 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 			///此处和停止打压部分的寻找峰值点略有区别
 			if (i != u_nn - 1)
 			{
-				if ((abs_int(Up_arr[i][2] - next_down_y) > mjudge_peak_height && abs_int(Up_arr[i][2] - next_down_y) < 1500 && abs_int(Up_arr[i][2] - before_down_y) > mjudge_peak_height && abs_int(Up_arr[i][2] - before_down_y) < 1500) && (abs_int(Up_arr[i][1] - before_down_x) > 10 && abs_int(Up_arr[i][1] - next_down_x) > 10))
+				if ((abs_int(Up_arr[i][2] - next_down_y) > mjudge_peak_height && abs_int(Up_arr[i][2] - next_down_y) < 4000 && abs_int(Up_arr[i][2] - before_down_y) > mjudge_peak_height && abs_int(Up_arr[i][2] - before_down_y) < 4000) && (abs_int(Up_arr[i][1] - before_down_x) > 10 && abs_int(Up_arr[i][1] - next_down_x) > 10))
 				{
+					//2.14日修改，把这里1500的阈值进行扩大到4000，其实这里可以没有必要进行最大阈值的限制，不影响以前完整的算法。
+
 					p_peak[uu][0] = Up_arr[i][1];
 					p_peak[uu][1] = Up_arr[i][2];
 					/*p_valley[uu][0] = before_down_x;*/
@@ -1208,7 +1238,7 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 					//p_valley[uu][2] = next_down_x;
 					//p_valley[uu][3] = next_down_y;
 					//uu++;
-					BP_CONFIDENCE_PRE = BP_CONFIDENCE_PRE + 8;   //若左右高度过高，视为置信度减少
+					BP_CONFIDENCE_PRE = BP_CONFIDENCE_PRE + 0;   //若左右高度过高，视为置信度减少   ， 2.14日修改，这里改成了0，以前是8. 将BP_CONFIDENCE_PRE + 8放在了下文应该需要的地方
 				}
 			}
 			else if ((abs_int(Up_arr[i][1] - before_down_x) > 10 && abs_int(Up_arr[i][1] - next_down_x) > 10))
@@ -1237,13 +1267,37 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 			}
 			else
 			{
-				p_peak[i][2] = 0;
-				tingzhi_ganrao++;   //这里我们要将其视作部分干扰
+				p_peak[i][2] = 0;   
+			//	tingzhi_ganrao++;   //这里我们要将其视作部分干扰         //2.14日修改，将其删除，放在下文修改的地方
 			}
 
 		}
 
-	
+	//2020.2.14更改内容
+	//更改原因：对于一些老人的数据，其脉搏波高度非常大，但却是正常波形。所以此处判断置信度时不能只用简单的高度
+	//以下为2020.2.14新增，目的是将这些老人比较大的脉搏波也识别为正常波形，尽量使改动不影响以前的算法
+	//所以这种情况我们应该将其视为特殊情况，筛选出来，特殊对待。我们设置置信度的概念是为了防止干扰，老人的波形和干扰的区别是，干扰时突然出现的，老人的波形却是逐渐上升的。
+	////特殊情况筛选：
+		for (i = 0; i < uu; i++)
+		{
+			if (p_peak[i][2] == 0) //针对置信度为0的波形
+			{
+				if (i > 4) //小于4个脉搏波肯定有问题，不用修改，会在后面判断时被检测到。
+				{
+					//判断其连续性
+					if (abs_int(p_peak[i][0] - p_peak[i - 1][0]) < abs_int((p_peak[i - 1][0] - p_peak[i - 2][0] + p_peak[i - 2][0] - p_peak[i - 3][0] + p_peak[i - 3][0] - p_peak[i - 4][0]) / 3) + 50)
+					{
+						p_peak[i][2] = 1;  //若是连续上升或者下降在一定范围，而不是突然出现的，则认为是没有问题，重新置1.
+					}
+					else
+					{
+						BP_CONFIDENCE_PRE = BP_CONFIDENCE_PRE + 8;     //这个else才是真正的干扰，将BP_CONFIDENCE_PRE+8 放在这里
+						tingzhi_ganrao++;  //上文的放在这里； 
+					}
+				}
+			}
+		}
+		//以上为2.14日代码修改，应该适用于老年人数据，同时也不影响年轻人的数据。
 
 
 
@@ -1256,7 +1310,7 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 	//	fprintf(fw, "%d %d\r\n", p_peak[i][0],p_peak[i][1]);
 	//}
 	//fclose(fw);
-	/////////////9.6日待解决问题：置信度阈值  幅度系数 ////置信度阈值暂且固定，影响不太大
+
 	//去干扰 ,查找有效脉搏波。去除异常波形段
 	//首先从形态上定义一个脉搏波是有效的。有效脉搏波的定义为：高度不能太高或者太低在1000左右，不能太宽或者太窄，在100左右
 	
@@ -1297,7 +1351,7 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 		{
 			ppp_quality[i][0] = p_peak[i][1] - p_valley[i][0];    //左高度
 			ppp_quality[i][1] = p_peak[i][1] - p_valley[i][1];     //右高度
-			ppp_quality[i][2] = ppp_quality[i][1];        //置信度列  暂时先赋值为座高度
+			ppp_quality[i][2] = ppp_quality[i][1];        //置信度列  暂时先赋值为左高度
 		}
 		//对ppp_quality进行从大到小排序
 		for (i = 0; i < uu; i++)  // 对均值进行冒泡从大到小的排序
@@ -1313,7 +1367,7 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 				}
 			}
 		}
-		//这里主要是判断前六个波峰的均值是否太大，是前期干扰。（可选）
+		//这里主要是判断前六大的波峰的均值是否太大，是前期干扰。（可选）
 		ITX = 6;
 		SUMint = 0;
 		for (i = 1; i < ITX; i++)
@@ -1321,11 +1375,11 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 			SUMint = SUMint + ppp_quality[i][2];
 		}
 		SUMint = SUMint / (ITX -1 );
-	
-		if (SUMint > 1500)
-		{
-			BP_CONFIDENCE_PRE = BP_CONFIDENCE_PRE + 20;
-		}
+		//2.14日修改，将其删除，这里的前六大波形高度，不应该受到限制。BP_CONFIDENCE_PRE不应该被增加。
+		//if (SUMint > 1500)
+		//{
+		//	BP_CONFIDENCE_PRE = BP_CONFIDENCE_PRE + 20;
+		//}
 		BP_CONFIDENCE_PRE = BP_CONFIDENCE_PRE + tingzhi_ganrao;
 		
 		for (i = 0; i < uu; i++)  //这个for循环是用来赋值p_quality置信度数组信息的，这个p_quality很重要
@@ -1703,7 +1757,8 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 		{
 			for (i = fr_start; i < fr_start + utx2 - 1; i++)
 			{
-				if (p_peak[i + 1][0] - p_peak[i][0] >= 85 && p_peak[i + 1][0] - p_peak[i][0] < 150)
+                          //波峰波峰间隔，心率过快，波峰间隔短2021-1-12更新，原[85:150)，心率[40-200]的峰值间隔为[35:200]
+				if (p_peak[i + 1][0] - p_peak[i][0] >= 35 && p_peak[i + 1][0] - p_peak[i][0] < 200)
 				{
 					SUMint = SUMint + (p_peak[i + 1][0] - p_peak[i][0]);
 					utx3++;
@@ -1744,7 +1799,7 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 		/*uint16_t ADR_id = 0;*/   
 		//用peak_mean代替ADR，以前有个ADR数组，用来存放峰值间隔信息的，有peak_mean数组闲置且后续无用，故用peak_mean表示ADR了。
 		for (i = 0; i < uu - 1; i++)
-		{
+		{                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
 			peak_Mean[i][0] = p_peak[i + 1][0] - p_peak[i][0];
 			peak_Mean[i][1] = p_quality[i][0];
 			/*ADR_id++;*/
@@ -2564,15 +2619,15 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 		//fclose(fw35);
 
 		//***************************************************
-		FILE* fw7;
-		errno_t err7;
-		err7 = fopen_s(&fw7, "D:\\HM117\\117DATA\\1136nihe2.txt", "wb");
-		for (i = 0; i < numt; i++)
-		{
+		//FILE* fw7;
+		//errno_t err7;
+		//err7 = fopen_s(&fw7, "D:\\HM117\\117DATA\\1136nihe2.txt", "wb");
+		//for (i = 0; i < numt; i++)
+		//{
 
-			fprintf(fw7, " %d %d\r\n", x1[0] + i*20, p_data[i]/20);
-		}
-		fclose(fw7);
+		//	fprintf(fw7, " %d %d\r\n", x1[0] + i*20, p_data[i]/20);
+		//}
+		//fclose(fw7);
 
 		////以下代码是三次多项式的拟合代码，三次多项式的拟合思想是:描述出一群离散点的大致趋势，是一种相对于三次样条的宏观拟合方式。
 
@@ -2855,15 +2910,15 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 			}
 		}
 
-		FILE* fw34;
-		errno_t err34;
-		err34 = fopen_s(&fw34, "D:\\HM117\\117DATA\\1136CCC.txt", "wb");
-		for (int i = 0; i < p_num; i++)
-		{
+		//FILE* fw34;
+		//errno_t err34;
+		//err34 = fopen_s(&fw34, "D:\\HM117\\117DATA\\1136CCC.txt", "wb");
+		//for (int i = 0; i < p_num; i++)
+		//{
 
-			fprintf(fw34, "%d\r\n", p_data[i]);
-		}
-		fclose(fw34);
+		//	fprintf(fw34, "%d\r\n", p_data[i]);
+		//}
+		//fclose(fw34);
 
 
 		//(T_peak[T_id - 1][1] + T_peak[T_id - 1][1]) / (T_peak[T_id - 1][1] + T_peak[T_id - 1][1])
@@ -3006,7 +3061,7 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 			dbp = temp_bp;
 			BP_Confidence =30;
 		}
-		if (mbp_predict_avg >= sbp || mbp_predict_avg <= dbp)//置信度的微调
+		if (mbp_predict_avg >= sbp || mbp_predict_avg <= dbp)//置信度的微调，在函数外部，低于70会提示干扰过大。
 		{
 			mbp_predict_avg = sbp * 0.66 + dbp * 0.33;
 			BP_Confidence = BP_Confidence - 20;
@@ -3068,20 +3123,14 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 		numt = 0;
 		avg_max_id = 0;
 		avg_max_y = 0;
-        f_hr =0;
+                f_hr =0;
 		stop_flag = 0;
 		peak_now = 0;
 		peak_need = 0;
 		bp_now = 0;
 		bp_max = 0;
 		*STOP_FLAG = 1;
-
-
-	}
-
-
-
-	
+	}	
 }
 
 int abs_int(int a)
