@@ -2,7 +2,7 @@
 //
 
 #include "HM117_algorithm.h"
-#include "string.h"
+#include <string>
 //负责人：夏顺   时间： 2019.12.31  微信：15369748330  代码开发环境是win7 , vs2019
 //本程序总体来看共分为两个模块，第一个模块是停止打压算法的模块，第二个是停止打压后计算血压具体数值的模块。以tingzhidaya为标志位
 //算法的思想流程图见文档，下面主要对程序进行注释和说明。
@@ -59,8 +59,7 @@ uint16_t f_hr = 0;               //心率
 //函数的输出包括：HR,SBP, ABP,DBP, XLBQ_FLAG, BP_CONFIDENCE, STOP_FLAG,LOOSE_CUFF八个参数，其含义分别是心率，高压，平均压，低压，心率不齐标志位，置信度，停止打压标志位，袖带过松标志位。
 void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t p_num_bp, uint16_t checkstop_num,  uint16_t* HR, uint16_t* SBP, uint16_t* ABP, uint16_t* DBP, uint8_t* XLBQ_FLAG, uint16_t* BP_CONFIDENCE, uint16_t* STOP_FLAG , uint16_t * LOOSE_CUFF)
 {
-        char pr_1 = '1';
-	printf("%s",pr_1);
+	
 	*HR = 0;
 	*SBP = 0;
 	*DBP = 0;
@@ -677,8 +676,7 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 						if (p_peak[fff][1] <= 200) //波峰的高度低于200，视为较低的波峰阈值，该值是经验和实验所得，不建议改变。
 						{
 							low_peak++;
-                                                        //2021-1-11更新，原low_peak>=2，为适应255/195打压。
-							if (low_peak > 3)
+							if (low_peak >= 2)
 							{
 								stop_flag = 1;
 								tingzhi_ganrao = tingzhi_ganrao + 10;  //由于错过最大值点或者最大值点干扰，需要减少部分置信度
@@ -705,7 +703,7 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 				{
 					if ((peak_now <= peak_need ) && (uu - 2 - epoch_num-1)>p_max_id)   //如果当前波峰值小于需停波峰值，则停止
 					{
-                                            stop_flag = 1;					
+                        stop_flag = 1;					
 					}
 					if (peak_now <= 200)   ////如果当前波峰值较小，则停止
 					{
@@ -960,7 +958,7 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 			*HR = 0;
 			*SBP = 0;
 			*BP_CONFIDENCE = 10;
-			* DBP = 0;
+			*DBP = 0;
 			*ABP = 0;
 
 			*XLBQ_FLAG = 0;
@@ -1757,8 +1755,7 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 		{
 			for (i = fr_start; i < fr_start + utx2 - 1; i++)
 			{
-                          //波峰波峰间隔，心率过快，波峰间隔短2021-1-12更新，原[85:150)，心率[40-200]的峰值间隔为[35:200]
-				if (p_peak[i + 1][0] - p_peak[i][0] >= 35 && p_peak[i + 1][0] - p_peak[i][0] < 200)
+				if (p_peak[i + 1][0] - p_peak[i][0] >= 85 && p_peak[i + 1][0] - p_peak[i][0] < 150)
 				{
 					SUMint = SUMint + (p_peak[i + 1][0] - p_peak[i][0]);
 					utx3++;
@@ -1799,7 +1796,7 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 		/*uint16_t ADR_id = 0;*/   
 		//用peak_mean代替ADR，以前有个ADR数组，用来存放峰值间隔信息的，有peak_mean数组闲置且后续无用，故用peak_mean表示ADR了。
 		for (i = 0; i < uu - 1; i++)
-		{                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+		{
 			peak_Mean[i][0] = p_peak[i + 1][0] - p_peak[i][0];
 			peak_Mean[i][1] = p_quality[i][0];
 			/*ADR_id++;*/
@@ -2619,15 +2616,15 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 		//fclose(fw35);
 
 		//***************************************************
-		//FILE* fw7;
-		//errno_t err7;
-		//err7 = fopen_s(&fw7, "D:\\HM117\\117DATA\\1136nihe2.txt", "wb");
-		//for (i = 0; i < numt; i++)
-		//{
+		FILE* fw7;
+		errno_t err7;
+		err7 = fopen_s(&fw7, "D:\\HM117\\117DATA\\1136nihe2.txt", "wb");
+		for (i = 0; i < numt; i++)
+		{
 
-		//	fprintf(fw7, " %d %d\r\n", x1[0] + i*20, p_data[i]/20);
-		//}
-		//fclose(fw7);
+			fprintf(fw7, " %d %d\r\n", x1[0] + i*20, p_data[i]/20);
+		}
+		fclose(fw7);
 
 		////以下代码是三次多项式的拟合代码，三次多项式的拟合思想是:描述出一群离散点的大致趋势，是一种相对于三次样条的宏观拟合方式。
 
@@ -2910,15 +2907,15 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 			}
 		}
 
-		//FILE* fw34;
-		//errno_t err34;
-		//err34 = fopen_s(&fw34, "D:\\HM117\\117DATA\\1136CCC.txt", "wb");
-		//for (int i = 0; i < p_num; i++)
-		//{
+		FILE* fw34;
+		errno_t err34;
+		err34 = fopen_s(&fw34, "D:\\HM117\\117DATA\\1136CCC.txt", "wb");
+		for (int i = 0; i < p_num; i++)
+		{
 
-		//	fprintf(fw34, "%d\r\n", p_data[i]);
-		//}
-		//fclose(fw34);
+			fprintf(fw34, "%d\r\n", p_data[i]);
+		}
+		fclose(fw34);
 
 
 		//(T_peak[T_id - 1][1] + T_peak[T_id - 1][1]) / (T_peak[T_id - 1][1] + T_peak[T_id - 1][1])
@@ -3123,14 +3120,20 @@ void BP_Analyse(uint16_t * p_data, uint16_t* p_bp, uint16_t p_num_wave, uint16_t
 		numt = 0;
 		avg_max_id = 0;
 		avg_max_y = 0;
-                f_hr =0;
+        f_hr =0;
 		stop_flag = 0;
 		peak_now = 0;
 		peak_need = 0;
 		bp_now = 0;
 		bp_max = 0;
 		*STOP_FLAG = 1;
-	}	
+
+
+	}
+
+
+
+	
 }
 
 int abs_int(int a)
@@ -3140,3 +3143,4 @@ int abs_int(int a)
 	else
 		return a * (-1);
 }
+
