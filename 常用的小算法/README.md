@@ -1,4 +1,6 @@
 # Algorithm_set.cpp
+## 读取txt文件数据
+Read_txt.cpp
 ## 计算最大值最小值相关的
 2个数求最大值
 计算斜率最大点
