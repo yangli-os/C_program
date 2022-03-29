@@ -1,4 +1,6 @@
 # Algorithm_set.cpp
+## 读取txt的256*256的数据，并生成图像，检测图像中的圆
+Circle_in_Array.cpp
 ## 读取txt文件数据
 Read_txt.cpp
 ## 计算最大值最小值相关的
