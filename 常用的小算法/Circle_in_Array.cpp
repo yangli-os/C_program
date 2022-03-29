@@ -11,20 +11,20 @@ using namespace cv;
 using namespace std;
 int min_position(float* a, int len_a);
 int max_position(float* a, int len_a);
-void normalize_MaxMin1(float* x, int len_x, int multiple);
-
+void normalize_MaxMin(float* x, int len_x, int multiple);
+/*********************这部分数据其实只需要一半也就是256*256即可************************************************/
 int read_txt();
-float data_all[131072] = { 0 };          //定义一个256*256的数组，用于存放数据
-float data_Magnetic[65536] = { 0 };      //定义一个256*256的数组，用于存放数据
-float data_Current[65536] = { 0 };       //定义一个256*256的数组，用于存放数据
-float data_Current2[256][256] = { 0 };
+float data_all[131072] = { 0 };          //定义一个256*256*2的数组，用于存放数据
+float data_M[65536] = { 0 };      //定义一个256*256的数组，用于存放数据
+float data_C[65536] = { 0 };       //定义一个256*256的数组，用于存放数据
+float data_C2[256][256] = { 0 };
 int read_txt()
 {
 	ifstream infile;                                                                     //定义读取文件流，相对于程序来说是in
-	infile.open("E:\\data.txt");         //打开文件
+	infile.open("E:\\data.txt");         						     //打开文件
 	for (int i = 0; i < 131072; i++)                                                     //定义行循环
 	{
-		infile >> data_all[i];                                                           //读取一个值（空格、制表符、换行隔开）就写入到矩阵中，行列不断循环进行
+		infile >> data_all[i];                                                       //读取一个值（空格、制表符、换行隔开）就写入到矩阵中，行列不断循环进行
 	}
 	infile.close();                                                                      //读取完成之后关闭文件
 	return 0;
@@ -35,24 +35,24 @@ int main()
 	int red = read_txt();
 	for (int i = 0; i < 65536; i++)
 	{
-		data_Magnetic[i] = data_all[i];
+		data_M[i] = data_all[i];
 	}
 	for (int j = 65536; j < 131072; j++)
 	{
-		data_Current[j - 65536] = data_all[j];
+		data_C[j - 65536] = data_all[j];
 	}
 	//0~255的最大最小归一化
-	normalize_MaxMin1(data_Current, 65536, 255);
+	normalize_MaxMin(data_C, 65536, 255);
 
 	for (int p = 0; p < 256; p++)
 	{
 		for (int q = 0; q < 256; q++)
 		{
-			data_Current2[q][p] = data_Current[p * 256 + q];
+			data_C2[q][p] = data_C[p * 256 + q];
 		}
 	}
 	//把数据生成256*256的图
-	Mat srcImage = Mat(Size(256, 256), CV_32F, data_Current2);
+	Mat srcImage = Mat(Size(256, 256), CV_32F, data_C2);
 	Mat im_color;
 	srcImage.convertTo(im_color, CV_8UC1, 255.0 / 255);             //映射从CV_32F转换到CV_8U 的0-255
 	Mat grad_Image;
@@ -119,7 +119,7 @@ int min_position(float* a, int len_a)
     return position;
 }
 
-void normalize_MaxMin1(float* x, int len_x, int multiple)
+void normalize_MaxMin(float* x, int len_x, int multiple)
 {
     //最大最小归一化到0-1；
     float max_x = x[max_position(x, len_x)];
