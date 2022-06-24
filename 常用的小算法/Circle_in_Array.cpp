@@ -21,7 +21,7 @@ float data_C2[256][256] = { 0 };
 int read_txt()
 {
 	ifstream infile;                                                                     //定义读取文件流，相对于程序来说是in
-	infile.open("E:\\data.txt");         						     //打开文件
+	infile.open("../data.txt");         						     //打开文件
 	for (int i = 0; i < 131072; i++)                                                     //定义行循环
 	{
 		infile >> data_all[i];                                                       //读取一个值（空格、制表符、换行隔开）就写入到矩阵中，行列不断循环进行
