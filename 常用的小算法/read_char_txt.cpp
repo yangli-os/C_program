@@ -14,7 +14,7 @@ int main()
  int len_str;
  string message;
  ifstream infile;
- infile.open("C://Users//dobi//Desktop//name_list.txt");
+ infile.open("..//name_list.txt");
  if (infile.is_open())          //文件打开成功,说明曾经写入过东西
  {
   while (infile.good() && !infile.eof())
@@ -22,7 +22,7 @@ int main()
    memset(buf, 0, 1024);
    infile.getline(buf, 1024);
    len_str = strlen(buf);
-   strncpy(filePath, buf, len_str-25);
+   strncpy(filePath, buf, len_str-25);     //赋值给filePath一部分
    strncpy(fileName, buf, len_str);
   }
   infile.close();
